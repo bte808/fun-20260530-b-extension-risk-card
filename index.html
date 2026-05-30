@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Paste a VS Code extension manifest or notes and generate a local-first install risk card."
+    />
+    <title>Extension Risk Card</title>
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Local-first install checker</p>
+        <h1>Extension Risk Card</h1>
+      </div>
+      <div class="scoreplate" aria-live="polite">
+        <span id="score">--</span>
+        <small>risk / 100</small>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="input-panel" aria-labelledby="input-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Input</p>
+            <h2 id="input-title">Manifest or notes</h2>
+          </div>
+          <div class="toolbar">
+            <button id="load-sample" type="button">Sample</button>
+            <button id="clear-input" type="button">Clear</button>
+          </div>
+        </div>
+
+        <textarea
+          id="manifest-input"
+          spellcheck="false"
+          aria-label="Paste VS Code extension package.json or marketplace notes"
+        ></textarea>
+
+        <div class="actions">
+          <button id="analyze" class="primary" type="button">Analyze risk</button>
+          <button id="copy-md" type="button">Copy Markdown</button>
+          <button id="download-md" type="button">Download MD</button>
+        </div>
+        <p id="status" class="status" role="status">Ready.</p>
+      </section>
+
+      <section class="output-panel" aria-labelledby="decision-title">
+        <div class="decision-strip">
+          <div>
+            <p class="eyebrow">Decision</p>
+            <h2 id="decision-title"><span id="decision">Needs input</span></h2>
+            <p id="summary" class="summary">Paste a manifest to begin.</p>
+          </div>
+        </div>
+
+        <div class="output-grid">
+          <article class="module">
+            <h3>Metadata</h3>
+            <dl id="metadata"></dl>
+          </article>
+
+          <article class="module">
+            <h3>Red flags</h3>
+            <ul id="signals" class="signal-list"></ul>
+          </article>
+
+          <article class="module">
+            <h3>Trust signals</h3>
+            <ul id="positives"></ul>
+          </article>
+
+          <article class="module">
+            <h3>Install checklist</h3>
+            <ul id="checklist"></ul>
+          </article>
+        </div>
+
+        <article class="module markdown-module">
+          <h3>Markdown card</h3>
+          <pre id="markdown" tabindex="0"></pre>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
