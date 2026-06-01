@@ -4,12 +4,15 @@
   "description": "Local-first VS Code extension install risk card generator.",
   "type": "module",
   "scripts": {
-    "test": "node test/risk-engine.test.mjs",
+    "test": "node test/risk-engine.test.mjs && node test/app-smoke.test.mjs",
     "check": "node scripts/static-check.mjs",
     "verify:browser": "node scripts/browser-verify.mjs"
   },
   "keywords": [
     "vscode",
+    "vscode-extension",
+    "risk-analysis",
+    "security-checklist",
     "security",
     "productivity",
     "local-first"

@@ -12,6 +12,8 @@ const nodes = {
   score: document.querySelector("#score"),
   decision: document.querySelector("#decision"),
   summary: document.querySelector("#summary"),
+  nextMoveTitle: document.querySelector("#next-move-title"),
+  nextMoveDetail: document.querySelector("#next-move-detail"),
   metadata: document.querySelector("#metadata"),
   signals: document.querySelector("#signals"),
   positives: document.querySelector("#positives"),
@@ -46,6 +48,8 @@ function renderAnalysis(analysis) {
     nodes.score.textContent = "--";
     nodes.decision.textContent = "Needs input";
     nodes.summary.textContent = analysis.error;
+    nodes.nextMoveTitle.textContent = "Start with a manifest";
+    nodes.nextMoveDetail.textContent = "Paste package.json or marketplace notes to get the first review step.";
     nodes.metadata.replaceChildren();
     nodes.signals.replaceChildren();
     nodes.positives.replaceChildren();
@@ -61,6 +65,8 @@ function renderAnalysis(analysis) {
   nodes.score.textContent = String(analysis.score);
   nodes.decision.textContent = analysis.level.label;
   nodes.summary.textContent = analysis.level.summary;
+  nodes.nextMoveTitle.textContent = analysis.nextMove.title;
+  nodes.nextMoveDetail.textContent = analysis.nextMove.detail;
   nodes.copyButton.disabled = false;
   nodes.downloadButton.disabled = false;
 

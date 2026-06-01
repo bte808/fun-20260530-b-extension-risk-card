@@ -17,6 +17,7 @@ for (const file of requiredFiles) {
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 assert.match(html, /<textarea[\s\S]+id="manifest-input"/);
+assert.match(html, /id="next-move-title"/);
 assert.match(html, /src\/app\.js/);
 assert.match(html, /viewport/);
 
@@ -27,5 +28,6 @@ assert.match(css, /@media \(max-width: 620px\)/);
 const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
 assert.match(app, /navigator\.clipboard\.writeText/);
 assert.match(app, /downloadMarkdown/);
+assert.match(app, /nextMoveTitle/);
 
 console.log("static check passed");

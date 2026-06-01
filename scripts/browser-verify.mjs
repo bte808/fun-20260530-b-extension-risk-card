@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
+import { createServer } from "node:net";
 import { spawn, spawnSync } from "node:child_process";
 import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 
-const targetUrl = "http://localhost:5207/";
+const targetUrl = process.env.VERIFY_URL || "http://localhost:5207/";
 const chromeCandidates = [
   process.env.CHROME_BIN,
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -22,6 +23,23 @@ if (typeof WebSocket === "undefined") {
 async function wait(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
+  });
+}
+
+async function findFreePort() {
+  if (process.env.CDP_PORT) {
+    return Number(process.env.CDP_PORT);
+  }
+
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      server.close(() => {
+        resolve(address.port);
+      });
+    });
   });
 }
 
@@ -45,7 +63,7 @@ async function findChromePath() {
   throw new Error("Chrome was not found. Set CHROME_BIN to a Chromium-compatible browser executable.");
 }
 
-async function waitForDevToolsPort(userDataDir) {
+async function waitForDevToolsPort(userDataDir, fallbackPort) {
   const portFile = join(userDataDir, "DevToolsActivePort");
   const deadline = Date.now() + 8000;
   let lastError;
@@ -60,6 +78,16 @@ async function waitForDevToolsPort(userDataDir) {
     } catch (error) {
       lastError = error;
     }
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${fallbackPort}/json/version`);
+      if (response.ok) {
+        return String(fallbackPort);
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
     await wait(100);
   }
 
@@ -117,12 +145,13 @@ async function openCdp(port) {
 async function verifyViewport({ width, height, label }) {
   const userDataDir = await mkdtemp(join(tmpdir(), "extension-risk-card-"));
   const chromePath = await findChromePath();
+  const cdpPort = await findFreePort();
   const chrome = spawn(chromePath, [
     "--headless=new",
     "--disable-gpu",
     "--no-first-run",
     "--no-default-browser-check",
-    "--remote-debugging-port=0",
+    `--remote-debugging-port=${cdpPort}`,
     `--user-data-dir=${userDataDir}`,
     `--window-size=${width},${height}`,
     "about:blank"
@@ -132,7 +161,7 @@ async function verifyViewport({ width, height, label }) {
 
   let cdp;
   try {
-    const port = await waitForDevToolsPort(userDataDir);
+    const port = await waitForDevToolsPort(userDataDir, cdpPort);
     cdp = await openCdp(port);
     await cdp.send("Runtime.enable");
     await cdp.send("Page.enable");
@@ -178,6 +207,8 @@ async function verifyViewport({ width, height, label }) {
           decision: document.querySelector('#decision').textContent,
           status: document.querySelector('#status').textContent,
           markdownHasChecklist: document.querySelector('#markdown').textContent.includes('Install Checklist'),
+          markdownHasNextMove: document.querySelector('#markdown').textContent.includes('Next Review Move'),
+          nextMove: document.querySelector('#next-move-title').textContent,
           hasRiskSignal: document.body.textContent.includes('Install-time script present'),
           cleared,
           scrollWidth: document.documentElement.scrollWidth,
@@ -202,6 +233,8 @@ async function verifyViewport({ width, height, label }) {
     assert.equal(value.cleared.score, "--", `${label}: clear button should reset score`);
     assert.equal(value.decision, "Avoid until verified", `${label}: sample should produce a clear decision`);
     assert.equal(value.markdownHasChecklist, true, `${label}: markdown should include checklist`);
+    assert.equal(value.markdownHasNextMove, true, `${label}: markdown should include next review move`);
+    assert.equal(value.nextMove, "Read the install-time script first", `${label}: sample should prioritize install script review`);
     assert.equal(value.hasRiskSignal, true, `${label}: sample should show risk signal`);
     assert.equal(value.buttonsVisible, true, `${label}: buttons should be visible`);
     assert.equal(value.scrollWidth <= value.clientWidth + 1, true, `${label}: no horizontal overflow`);

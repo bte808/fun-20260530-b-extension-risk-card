@@ -428,6 +428,81 @@ function buildChecklist(analysis) {
   return checklist;
 }
 
+function buildNextMove(analysis) {
+  const signalIds = new Set(analysis.signals.map((signal) => signal.id));
+  const hasSignal = (id) => signalIds.has(id);
+
+  if (hasSignal("lifecycle-script")) {
+    return {
+      id: "review-install-script",
+      title: "Read the install-time script first",
+      detail: "Open the package scripts and anything they call before installing; use a disposable profile only after the script matches the extension's stated job."
+    };
+  }
+
+  if (hasSignal("sensitive-settings") || hasSignal("secret-terms")) {
+    return {
+      id: "verify-secret-handling",
+      title: "Verify secret handling before signing in",
+      detail: "Check where tokens or keys are stored, whether telemetry can see them, and test with throwaway credentials before using real secrets."
+    };
+  }
+
+  if (hasSignal("exec-terms")) {
+    return {
+      id: "trace-process-execution",
+      title: "Trace every shell or process call",
+      detail: "Find the command source, arguments, and trigger path so the extension cannot quietly run workspace-controlled commands."
+    };
+  }
+
+  if (hasSignal("startup-activation")) {
+    return {
+      id: "audit-auto-start",
+      title: "Audit the auto-start path",
+      detail: "Inspect startup or wildcard activation code before enabling the extension in a real project workspace."
+    };
+  }
+
+  if (hasSignal("filesystem-terms") || hasSignal("workspace-extension")) {
+    return {
+      id: "sandbox-workspace",
+      title: "Try it in a disposable workspace",
+      detail: "Use a temporary VS Code profile with fake files first, then watch what files the extension reads or writes."
+    };
+  }
+
+  if (hasSignal("missing-repository")) {
+    return {
+      id: "find-source",
+      title: "Find source and release history first",
+      detail: "Do not rely on the marketplace page alone; look for a repository, changelog, issue history, and matching release tag."
+    };
+  }
+
+  if (hasSignal("network-dependency") || (hasSignal("network-terms") && analysis.score >= 25)) {
+    return {
+      id: "check-network-purpose",
+      title: "Match network access to the product promise",
+      detail: "Confirm each endpoint or network dependency is necessary, documented, and not handling private workspace content unexpectedly."
+    };
+  }
+
+  if (analysis.mode === "text") {
+    return {
+      id: "paste-manifest",
+      title: "Paste the manifest next",
+      detail: "A marketplace description is useful, but package.json gives a better view of activation, scripts, dependencies, and contribution scope."
+    };
+  }
+
+  return {
+    id: "publisher-release-checks",
+    title: "Do normal publisher and release checks",
+    detail: "Compare the repository, license, release tag, issue history, and marketplace version before trusting it with private workspaces."
+  };
+}
+
 export function analyzeExtensionRisk(rawInput) {
   const parsed = parseManifest(rawInput);
   if (parsed.error) {
@@ -440,6 +515,7 @@ export function analyzeExtensionRisk(rawInput) {
       signals: [],
       positives: [],
       checklist: [],
+      nextMove: null,
       markdown: ""
     };
   }
@@ -456,10 +532,12 @@ export function analyzeExtensionRisk(rawInput) {
     positives: uniq(evaluated.positives),
     urls: evaluated.urls,
     checklist: [],
+    nextMove: null,
     markdown: ""
   };
 
   analysis.checklist = buildChecklist(analysis);
+  analysis.nextMove = buildNextMove(analysis);
   analysis.markdown = toRiskMarkdown(analysis);
   return analysis;
 }
@@ -483,6 +561,9 @@ export function toRiskMarkdown(analysis) {
     `Risk score: ${analysis.score}/100`,
     `Decision: ${analysis.level.label}`,
     `Summary: ${analysis.level.summary}`,
+    "",
+    "## Next Review Move",
+    `- ${analysis.nextMove.title}: ${analysis.nextMove.detail}`,
     "",
     "## Metadata",
     `- Publisher: ${analysis.metadata.publisher}`,
